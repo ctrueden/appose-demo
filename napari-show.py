@@ -4,6 +4,8 @@ from time import sleep
 import appose
 from appose.service import ResponseType
 
+import numpy as np
+
 napari_setup = """
 # CRITICAL: Qt must run on main thread on macOS.
 
@@ -45,9 +47,8 @@ from superqt import ensure_main_thread
 def show(narr):
     napari.imshow(narr)
 
-narr = np.random.random([512, 384])
-show(narr)
-task.outputs["shape"] = narr.shape
+show(ndarr.ndarray())
+task.outputs["shape"] = ndarr.shape
 """
 
 env = appose.base("/Users/curtis/.local/share/mamba/envs/napari").build()
@@ -71,24 +72,16 @@ with env.python() as python:
         sleep(0.1)
     print("Qt is ready!")
 
+    # Create a test image in shared memory.
+    ndarr = appose.NDArray(dtype="float64", shape=[512, 384])
+    narr = ndarr.ndarray()  # numpy.ndarray view on appose.NDArray
+    # Fill the array with random values.
+    # There's probably a slicker way without needing to slice/copy...
+    ndarr.ndarray()[:] = np.random.random(ndarr.shape)
+
     # Actually do a real thing with napari: create and show an image.
     print("Showing image with napari...")
-    task = python.task(napari_show)
-
-    #def task_listener(event):
-    #    if event.response_type == ResponseType.UPDATE:
-    #        print(f"Progress {task.current}/{task.maximum}")
-    #    elif event.response_type == ResponseType.COMPLETION:
-    #        numer = task.outputs["numer"]
-    #        denom = task.outputs["denom"]
-    #        ratio = numer / denom
-    #        print(f"Task complete. Result: {numer}/{denom} =~ {ratio}");
-    #    elif event.response_type == ResponseType.CANCELATION:
-    #        print("Task canceled")
-    #    elif event.response_type == ResponseType.FAILURE:
-    #        print(f"Task failed: {task.error}")
-
-    #task.listen(task_listener)
+    task = python.task(napari_show, inputs={"ndarr": ndarr})
 
     task.wait_for()
     shape = task.outputs["shape"]
